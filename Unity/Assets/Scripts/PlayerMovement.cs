@@ -10,9 +10,10 @@ public class PlayerMovement : MonoBehaviour
     private float horizontalMovement;
     private float verticalMovement;
     private bool onGround = true;
-    private string PLAYER_TAG = "Player";
+    // private string PLAYER_TAG = "Player";
     private string GROUND_TAG = "Ground";
-
+    private string OBSTACLE_TAG = "Obstacle";
+    
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -42,6 +43,11 @@ public class PlayerMovement : MonoBehaviour
         if (collision.gameObject.CompareTag(GROUND_TAG))
         {
             onGround = true;
+        }
+
+        if (collision.gameObject.CompareTag(OBSTACLE_TAG))
+        {
+            Debug.Log("DEATH");
         }
     }
 
