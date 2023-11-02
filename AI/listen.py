@@ -1,3 +1,5 @@
+import json
+import random
 import socket
 
 server_ip = "127.0.0.1" 
@@ -20,6 +22,10 @@ while True:
     game_state_json = data.decode('utf-8')
     print("Received game state data:")
     print(game_state_json)
+
+    action = random.choice(['move_forward', 'move_back', 'move_left', 'move_right'])
+    client_socket.send(action.encode('utf-8'))
+    print(f"Send {action}")
 
 client_socket.close()
 server_socket.close()

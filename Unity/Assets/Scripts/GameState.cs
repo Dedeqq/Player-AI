@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -9,14 +7,14 @@ using UnityEngine;
 public class GameState : MonoBehaviour
 {
     private Vector3 playerPosition;
-    private Vector3 playerVelocity;
     private string OBSTACLE_TAG = "Obstacle";
     private Socket clientSocket;
+    private string nextPlayerMove;
 
     void Start()
-    {   
-        string serverIP = "127.0.0.1";  
-        int serverPort = 12345;     
+    {
+        string serverIP = "127.0.0.1";
+        int serverPort = 12345;
         clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         IPEndPoint serverEndPoint = new IPEndPoint(IPAddress.Parse(serverIP), serverPort);
         clientSocket.Connect(serverEndPoint);
@@ -24,10 +22,81 @@ public class GameState : MonoBehaviour
 
     private void Update()
     {
-        playerPosition = transform.position;
-        playerVelocity = GetComponent<Rigidbody>().velocity;
-        DetectObstacles();
+        if (!string.IsNullOrEmpty(nextPlayerMove))
+        {
+            PerformAction(nextPlayerMove);
+            nextPlayerMove = null; // Reset the action
+        }
+
+        GetGameState();
         SendGameState();
+        ReceiveAction();
+    }
+
+    private void GetGameState()
+    {
+        playerPosition = transform.position;
+    }
+
+    private void SendGameState()
+    {
+        string gameStateJson = JsonUtility.ToJson(new GameStateData(playerPosition));
+        byte[] data = Encoding.UTF8.GetBytes(gameStateJson);
+
+        System.Threading.Thread networkThread = new System.Threading.Thread(() =>
+        {
+            try
+            {
+                clientSocket.Send(data);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Socket error: " + e.Message);
+            }
+        });
+
+        networkThread.Start();
+    }
+
+    private void ReceiveAction()
+    {
+        byte[] actionData = new byte[1024];
+        int bytesRead = clientSocket.Receive(actionData);
+
+        if (bytesRead > 0)
+        {
+            string actionJson = Encoding.UTF8.GetString(actionData, 0, bytesRead);
+            nextPlayerMove = actionJson;
+            Debug.Log(nextPlayerMove);
+        }
+    }
+
+    private void PerformAction(string moveDirection)
+    {
+        float moveSpeed = 5f;
+        Vector3 moveVector = Vector3.zero;
+
+        switch (moveDirection)
+        {
+            case "move_forward":
+                moveVector = Vector3.forward;
+                break;
+            case "move_left":
+                moveVector = Vector3.left;
+                break;
+            case "move_right":
+                moveVector = Vector3.right;
+                break;
+            case "move_back":
+                moveVector = Vector3.back;
+                break;
+            default:
+                Debug.LogWarning("Unknown move direction: " + moveDirection);
+                break;
+        }
+
+        // Move the player based on the calculated move vector
+        transform.Translate(moveVector * moveSpeed * Time.deltaTime);
     }
 
     private void DetectObstacles()
@@ -65,39 +134,15 @@ public class GameState : MonoBehaviour
             Debug.Log("Obstacle detected between front and right at " + hit.point);
         }
     }
-    private void SendGameState()
-    {
-        string gameStateJson = JsonUtility.ToJson(new GameStateData(playerPosition, playerVelocity));
-        byte[] data = Encoding.UTF8.GetBytes(gameStateJson);     
-
-        // Use a separate thread for network communication
-        System.Threading.Thread networkThread = new System.Threading.Thread(() =>
-        {
-            try
-            {
-                clientSocket.Send(data);
-                // clientSocket.Close();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Socket error: " + e.Message);
-            }
-        });
-
-        // Start the network thread
-        networkThread.Start();
-    }
 }
 
 [System.Serializable]
 public class GameStateData
 {
     public Vector3 position;
-    public Vector3 velocity;
 
-    public GameStateData(Vector3 pos, Vector3 vel)
+    public GameStateData(Vector3 pos)
     {
         position = pos;
-        velocity = vel;
     }
 }
