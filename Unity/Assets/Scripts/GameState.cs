@@ -3,13 +3,15 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using UnityEngine;
+using Newtonsoft.Json;
 
 public class GameState : MonoBehaviour
 {
     private Vector3 playerPosition;
     private string OBSTACLE_TAG = "Obstacle";
     private Socket clientSocket;
-    private string nextPlayerMove;
+    private bool toMove = false;
+    MovementData receivedMovement;
 
     void Start()
     {
@@ -22,10 +24,10 @@ public class GameState : MonoBehaviour
 
     private void Update()
     {
-        if (!string.IsNullOrEmpty(nextPlayerMove))
+        if (toMove)
         {
-            PerformAction(nextPlayerMove);
-            nextPlayerMove = null; // Reset the action
+            PerformAction();
+            toMove = false; 
         }
 
         GetGameState();
@@ -60,44 +62,28 @@ public class GameState : MonoBehaviour
 
     private void ReceiveAction()
     {
-        byte[] actionData = new byte[1024];
-        int bytesRead = clientSocket.Receive(actionData);
+        byte[] movementData = new byte[1024];
+        int bytesRead = clientSocket.Receive(movementData);
 
         if (bytesRead > 0)
         {
-            string actionJson = Encoding.UTF8.GetString(actionData, 0, bytesRead);
-            nextPlayerMove = actionJson;
-            Debug.Log(nextPlayerMove);
+            string movementJson = Encoding.UTF8.GetString(movementData, 0, bytesRead);
+            receivedMovement = JsonConvert.DeserializeObject<MovementData>(movementJson);
+            toMove = true;
+
+            // Now you can use the values of verticalMovement and horizontalMovement
+            Debug.Log("Received Vertical Movement: " + receivedMovement.verticalMovement);
+            Debug.Log("Received Horizontal Movement: " + receivedMovement.horizontalMovement);
         }
     }
 
-    private void PerformAction(string moveDirection)
+    private void PerformAction()
     {
         float moveSpeed = 5f;
-        Vector3 moveVector = Vector3.zero;
-
-        switch (moveDirection)
-        {
-            case "move_forward":
-                moveVector = Vector3.forward;
-                break;
-            case "move_left":
-                moveVector = Vector3.left;
-                break;
-            case "move_right":
-                moveVector = Vector3.right;
-                break;
-            case "move_back":
-                moveVector = Vector3.back;
-                break;
-            default:
-                Debug.LogWarning("Unknown move direction: " + moveDirection);
-                break;
-        }
-
-        // Move the player based on the calculated move vector
-        transform.Translate(moveVector * moveSpeed * Time.deltaTime);
+        Vector3 moveVector = new Vector3(receivedMovement.horizontalMovement * moveSpeed, 0, receivedMovement.verticalMovement * moveSpeed);
+        transform.position += moveVector * Time.deltaTime;
     }
+
 
     private void DetectObstacles()
     {
@@ -145,4 +131,11 @@ public class GameStateData
     {
         position = pos;
     }
+}
+
+[Serializable]
+public class MovementData
+{
+    public float verticalMovement;
+    public float horizontalMovement;
 }

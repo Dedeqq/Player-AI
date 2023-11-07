@@ -23,9 +23,16 @@ while True:
     print("Received game state data:")
     print(game_state_json)
 
-    action = random.choice(['move_forward', 'move_back', 'move_left', 'move_right'])
-    client_socket.send(action.encode('utf-8'))
-    print(f"Send {action}")
+    # action = random.choice(['move_forward', 'move_back', 'move_left', 'move_right'])
+    # client_socket.send(action.encode('utf-8'))
+    # print(f"Send {action}")
+    vertical_movement = random.uniform(0, 1)
+    horizontal_movement = random.uniform(-1, 1)
+    movement_json = json.dumps({"verticalMovement": vertical_movement, 
+                                "horizontalMovement": horizontal_movement})
+
+    client_socket.send(movement_json.encode('utf-8'))
+
 
 client_socket.close()
 server_socket.close()

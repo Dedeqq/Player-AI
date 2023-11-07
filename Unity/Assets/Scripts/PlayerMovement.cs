@@ -5,7 +5,7 @@ using UnityEngine;
 public class PlayerMovement : MonoBehaviour
 {   
     private Rigidbody rb;
-    [SerializeField] private float movementSpeed = 5f;
+    [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float jumpForce = 5f;
     private float horizontalMovement;
     private float verticalMovement;
@@ -23,7 +23,7 @@ public class PlayerMovement : MonoBehaviour
     {   
         horizontalMovement = Input.GetAxis("Horizontal");
         verticalMovement = Input.GetAxis("Vertical");
-        rb.velocity = new Vector3(horizontalMovement * movementSpeed, rb.velocity.y, verticalMovement * movementSpeed);
+        rb.velocity = new Vector3(horizontalMovement * moveSpeed, rb.velocity.y, verticalMovement * moveSpeed);
 
         if (Input.GetButtonDown("Jump") && onGround)
         {
