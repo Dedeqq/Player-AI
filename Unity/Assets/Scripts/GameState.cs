@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Newtonsoft.Json;
 
 public class GameState : MonoBehaviour
@@ -10,7 +11,8 @@ public class GameState : MonoBehaviour
     private Vector3 playerPosition;
     private string OBSTACLE_TAG = "Obstacle";
     private Socket clientSocket;
-    private bool toMove = false;
+    private bool toMove;
+    private float gameResetDepth = -2f;
     MovementData receivedMovement;
 
     void Start()
@@ -20,10 +22,15 @@ public class GameState : MonoBehaviour
         clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         IPEndPoint serverEndPoint = new IPEndPoint(IPAddress.Parse(serverIP), serverPort);
         clientSocket.Connect(serverEndPoint);
+        toMove = false;
     }
 
     private void Update()
-    {
+    {   
+        if (transform.position.y < gameResetDepth)
+        {
+            ResetGame();
+        }
         if (toMove)
         {
             PerformAction();
@@ -59,6 +66,21 @@ public class GameState : MonoBehaviour
 
         networkThread.Start();
     }
+
+    private void SendMessage(string message)
+    {
+        byte[] messageData = Encoding.UTF8.GetBytes(message);
+
+        try
+        {
+            clientSocket.Send(messageData);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Socket error: " + e.Message);
+        }
+    }
+
 
     private void ReceiveAction()
     {
@@ -118,6 +140,35 @@ public class GameState : MonoBehaviour
         if (Physics.Raycast(transform.position, frontRight, out hit, raycastDistance) && hit.collider.CompareTag(OBSTACLE_TAG))
         {
             Debug.Log("Obstacle detected between front and right at " + hit.point);
+        }
+    }
+
+    private void ResetGame()
+    {   
+        byte[] data = Encoding.UTF8.GetBytes("GAME_END");
+
+        System.Threading.Thread networkThread = new System.Threading.Thread(() =>
+        {
+            try
+            {
+                clientSocket.Send(data);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Socket error: " + e.Message);
+            }
+        Scene currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.name);
+        });
+
+        networkThread.Start();
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag(OBSTACLE_TAG))
+        {
+            ResetGame();
         }
     }
 }
